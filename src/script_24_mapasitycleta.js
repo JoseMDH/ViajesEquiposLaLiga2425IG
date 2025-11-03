@@ -270,6 +270,7 @@ function limpiarLineasYViajes() {
 
 function reconstruirEstadoHasta(fechaLimite) {
   limpiarLineasYViajes();
+  limpiarViajesActivos();
   partidosLanzados.clear();
 
   const fechas = Object.keys(partidosPorFecha).sort();
@@ -307,12 +308,6 @@ function avanzarDia() {
 function retrocederDia() {
   if (!fechaSimulacion) return;
   fechaSimulacion.setDate(fechaSimulacion.getDate() - 1);
-  reconstruirEstadoHasta(fechaSimulacion);
-  actualizarSimulacion(true);
-}
-function avanzarDia() {
-  if (!fechaSimulacion) return;
-  fechaSimulacion.setDate(fechaSimulacion.getDate() + 1);
   reconstruirEstadoHasta(fechaSimulacion);
   actualizarSimulacion(true);
 }
