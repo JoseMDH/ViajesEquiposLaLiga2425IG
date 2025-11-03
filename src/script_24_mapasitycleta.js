@@ -270,7 +270,6 @@ function limpiarLineasYViajes() {
 
 function reconstruirEstadoHasta(fechaLimite) {
   limpiarLineasYViajes();
-  limpiarViajesActivos();
   partidosLanzados.clear();
 
   const fechas = Object.keys(partidosPorFecha).sort();
@@ -310,11 +309,6 @@ function retrocederDia() {
   fechaSimulacion.setDate(fechaSimulacion.getDate() - 1);
   reconstruirEstadoHasta(fechaSimulacion);
   actualizarSimulacion(true);
-}
-
-function limpiarViajesActivos() {
-  viajesActivos.forEach(v => scene.remove(v.esfera));
-  viajesActivos = [];
 }
 
 function actualizarSimulacion(forzado = false) {
