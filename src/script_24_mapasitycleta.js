@@ -2,7 +2,11 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
-import GUI from "lil-gui"; // Usa lil-gui o dat.GUI según la librería que uséis, cambia este import si en clase usáis dat.GUI tradicional
+import GUI from "lil-gui";
+
+import mapaEsp from "./mapa.png";
+import coordenadasEstadios from "./coordenadasEstadios.csv";
+import partidos2425 from "./season-2425.csv";
 
 let scene, renderer, camera, camcontrols;
 let mapa, mapsx, mapsy;
@@ -53,7 +57,6 @@ let statsCanvas, statsTexture, statsPlane;
 let posicionStatsX = -2.4;
 let posicionStatsY = -1.25;
 
-// Control variables para GUI
 const controlSim = {
   pausa: false,
   velocidadSimulacion: 1,
@@ -99,7 +102,7 @@ function init() {
   );
 
   const loader = new THREE.TextureLoader();
-  loader.load("src/mapa.png", texture => {
+  loader.load(mapaEsp, texture => {
     const aspect = texture.image.width / texture.image.height;
     mapsy = scale;
     mapsx = mapsy * aspect;
@@ -152,11 +155,11 @@ function actualizarStatsCanvas(rankingEquipos) {
 }
 
 function cargarDatos() {
-  fetch("src/coordenadasEstadios.csv")
+  fetch(coordenadasEstadios)
     .then(r => r.text())
     .then(text => {
       procesarCSVEstadios(text);
-      return fetch("src/season-2425.csv");
+      return fetch(partidos2425);
     })
     .then(r => r.text())
     .then(text => {
@@ -178,7 +181,7 @@ function procesarCSVEstadios(texto) {
   };
 
   if (idx.team === -1 || idx.lat === -1 || idx.lon === -1) {
-    console.error("❌ Columnas incorrectas en coordenadasEstadios.csv");
+    console.error("Columnas incorrectas en coordenadasEstadios.csv");
     return;
   }
 
@@ -205,7 +208,7 @@ function procesarCSVPartidos(texto) {
   };
 
   if (idx.date === -1 || idx.home === -1 || idx.away === -1) {
-    console.error("❌ Columnas incorrectas en season-2425.csv");
+    console.error("Columnas incorrectas en season-2425.csv");
     return;
   }
 
@@ -244,10 +247,9 @@ function createGui() {
   gui.add(controlSim, "pausa").name("Pausar/Reanudar").onChange(v => {
     pausa = v;
   });
-  gui.add(controlSim, "fecha").name("Fecha actual").listen();
-  gui.add(controlSim, "avanzar").name("⏩ Avanzar día");
-  gui.add(controlSim, "retroceder").name("⏪ Retroceder día");
-  gui.add(controlSim, "reset").name("🔄 Reiniciar");
+  gui.add(controlSim, "avanzar").name("Avanzar día");
+  gui.add(controlSim, "retroceder").name("Retroceder día");
+  gui.add(controlSim, "reset").name("Reiniciar");
 }
 
 function animate() {
@@ -259,12 +261,10 @@ function animate() {
 }
 
 function limpiarLineasYViajes() {
-  // Elimina todas las esferas y líneas del mapa
   viajesActivos.forEach(v => scene.remove(v.esfera));
   viajesActivos = [];
   lineasPartidos.forEach(l => scene.remove(l));
   lineasPartidos = [];
-  // Reinicia los kilómetros
   for (let eq in distanciasEquipos) distanciasEquipos[eq] = 0;
 }
 
@@ -277,21 +277,20 @@ function reconstruirEstadoHasta(fechaLimite) {
     const estaFecha = parsearFechaKey(fechaKey);
     if (estaFecha > fechaLimite) return;
     partidosPorFecha[fechaKey].forEach(p => {
-      // Simula el viaje completo y dibuja directamente la línea
       const eHome = datosEstadios[p.home];
       const eAway = datosEstadios[p.away];
       if (!eHome || !eAway) return;
       const colorEquipo = coloresEquipos[p.away] || 0xffa500;
+
       const xHome = Map2Range(eHome.lon, minlon, maxlon, -mapsx / 2, mapsx / 2);
       const yHome = Map2Range(eHome.lat, minlat, maxlat, -mapsy / 2, mapsy / 2);
       const xAway = Map2Range(eAway.lon, minlon, maxlon, -mapsx / 2, mapsx / 2);
       const yAway = Map2Range(eAway.lat, minlat, maxlat, -mapsy / 2, mapsy / 2);
-      // Dibuja la línea del viaje
+
       const points = [new THREE.Vector3(xAway, yAway, 0.1), new THREE.Vector3(xHome, yHome, 0.1)];
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: colorEquipo, opacity: 0.7, transparent: true }));
       scene.add(line); lineasPartidos.push(line);
-      // Suma los kilómetros recorridos
       distanciasEquipos[p.away] += haversineDistance(eHome, eAway);
     });
   });
@@ -301,7 +300,7 @@ function reconstruirEstadoHasta(fechaLimite) {
 function avanzarDia() {
   if (!fechaSimulacion) return;
   fechaSimulacion.setDate(fechaSimulacion.getDate() + 1);
-  partidosLanzados.clear(); // Permite relanzar los partidos del día nuevo
+  partidosLanzados.clear();
   actualizarSimulacion(true);
 }
 
@@ -309,7 +308,7 @@ function retrocederDia() {
   if (!fechaSimulacion) return;
   fechaSimulacion.setDate(fechaSimulacion.getDate() - 1);
   reconstruirEstadoHasta(fechaSimulacion);
-  actualizarSimulacion(true); // Solo animar los viajes del día actual si quieres
+  actualizarSimulacion(true);
 }
 function avanzarDia() {
   if (!fechaSimulacion) return;
@@ -354,7 +353,6 @@ function actualizarSimulacion(forzado = false) {
   actualizarViajesActivos();
   actualizarStatsTexto();
 
-  // Solo avanza automáticamente si no está forzado por control manual
   if (!forzado) {
     fechaSimulacion.setDate(fechaSimulacion.getDate() + velocidadSimulacion);
     partidosLanzados.clear();
