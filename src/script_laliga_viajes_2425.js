@@ -62,7 +62,6 @@ const controlSim = {
   velocidadSimulacion: 1,
   fecha: "",
   avanzar: () => { avanzarDia(); },
-  retroceder: () => { retrocederDia(); },
   reset: () => { resetSimulacion(); }
 };
 
@@ -86,6 +85,26 @@ function init() {
   document.body.appendChild(renderer.domElement);
 
   camcontrols = new OrbitControls(camera, renderer.domElement);
+  camcontrols.enablePan = true;
+  camcontrols.panSpeed = 1.0;
+  camcontrols.enableZoom = true;
+  camcontrols.zoomSpeed = 1.2;
+  camcontrols.minDistance = 2;
+  camcontrols.maxDistance = 15;
+  camcontrols.enableRotate = true;
+  camcontrols.rotateSpeed = 0.5;
+  camcontrols.minPolarAngle = 0;
+  camcontrols.maxPolarAngle = Math.PI / 2.5;
+  camcontrols.enableDamping = true;
+  camcontrols.dampingFactor = 0.05;
+  camcontrols.target.set(0, 0, 0);
+  camcontrols.keys = {
+    LEFT: 'ArrowLeft',
+    UP: 'ArrowUp',
+    RIGHT: 'ArrowRight',
+    BOTTOM: 'ArrowDown'
+  };
+  camcontrols.listenToKeyEvents(window);
 
   const loaderFont = new FontLoader();
   loaderFont.load(
@@ -248,7 +267,6 @@ function createGui() {
     pausa = v;
   });
   gui.add(controlSim, "avanzar").name("Avanzar día");
-  gui.add(controlSim, "retroceder").name("Retroceder día");
   gui.add(controlSim, "reset").name("Reiniciar");
 }
 
@@ -304,12 +322,6 @@ function avanzarDia() {
   actualizarSimulacion(true);
 }
 
-function retrocederDia() {
-  if (!fechaSimulacion) return;
-  fechaSimulacion.setDate(fechaSimulacion.getDate() - 1);
-  reconstruirEstadoHasta(fechaSimulacion);
-  actualizarSimulacion(true);
-}
 
 function actualizarSimulacion(forzado = false) {
   if (!fechaSimulacion || !fuenteGlobal) return;
