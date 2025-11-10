@@ -16,6 +16,7 @@ let datosEstadios = {};
 let partidosPorFecha = {};
 let distanciasEquipos = {};
 let viajesActivos = [];
+let estadios3D = {};
 
 let fechaSimulacion;
 let velocidadSimulacion = 1;
@@ -29,6 +30,19 @@ let pausa = false;
 let partidosLanzados = new Set();
 
 let lineasPartidos = [];
+
+const desplazamientosEstadios = {
+  "Sevilla": { lat: -0.05, lon: 0.05 },
+  "Betis": { lat: 0.05, lon: -0.05 },
+  "Real Madrid": { lat: 0, lon: 0 },
+  "Ath Madrid": { lat: 0.1, lon: -0.1 },
+  "Getafe": { lat: -0.1, lon: 0.1 },
+  "Leganes": { lat: 0.05, lon: -0.05 },
+  "Vallecano": { lat: -0.05, lon: 0.05 },
+  "Barcelona":{lat: -0.05, lon: 0.05},
+  "Espanol": {lat: 0.05, lon: -0.05}
+};
+
 
 const coloresEquipos = {
   "Real Madrid": 0xffffff,
@@ -61,6 +75,7 @@ const controlSim = {
   pausa: false,
   velocidadSimulacion: 1,
   fecha: "",
+  mostrarEstadios: true,
   avanzar: () => { avanzarDia(); },
   reset: () => { resetSimulacion(); }
 };
@@ -89,7 +104,7 @@ function init() {
   camcontrols.panSpeed = 1.0;
   camcontrols.enableZoom = true;
   camcontrols.zoomSpeed = 1.2;
-  camcontrols.minDistance = 2;
+  camcontrols.minDistance = 1;
   camcontrols.maxDistance = 15;
   camcontrols.enableRotate = true;
   camcontrols.rotateSpeed = 0.5;
@@ -105,6 +120,13 @@ function init() {
     BOTTOM: 'ArrowDown'
   };
   camcontrols.listenToKeyEvents(window);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(5, 10, 5);
+  scene.add(directionalLight);
 
   const loaderFont = new FontLoader();
   loaderFont.load(
@@ -134,6 +156,71 @@ function init() {
   });
 
   window.addEventListener("resize", onWindowResize);
+}
+
+function crearEstadio3D(equipo, lat, lon) {
+  //Para los estadios que están muy cerca
+  const desplazamiento = desplazamientosEstadios[equipo] || { lat: 0, lon: 0 };
+  const latAjustada = lat + desplazamiento.lat;
+  const lonAjustada = lon + desplazamiento.lon;
+
+  const x = Map2Range(lonAjustada, minlon, maxlon, -mapsx / 2, mapsx / 2);
+  const y = Map2Range(latAjustada, minlat, maxlat, -mapsy / 2, mapsy / 2);
+  
+  const colorEquipo = coloresEquipos[equipo] !== undefined ? coloresEquipos[equipo] : 0xff0000;
+  
+  const estadioGrupo = new THREE.Group();
+  
+  const baseGeometry = new THREE.CylinderGeometry(0.02, 0.025, 0.05, 16);
+  const baseMaterial = new THREE.MeshStandardMaterial({ 
+    color: colorEquipo,
+    metalness: 0.3,
+    roughness: 0.7
+  });
+  const base = new THREE.Mesh(baseGeometry, baseMaterial);
+  base.rotation.x = Math.PI / 2;
+  estadioGrupo.add(base);
+  
+  const techoGeometry = new THREE.TorusGeometry(0.0225, 0.00375, 8, 16);
+  const techoMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0xcccccc,
+    metalness: 0.5,
+    roughness: 0.5
+  });
+  const techo = new THREE.Mesh(techoGeometry, techoMaterial);
+  techo.rotation.x = Math.PI / 2;
+  techo.position.z = 0.03;
+  estadioGrupo.add(techo);
+  
+  const campoGeometry = new THREE.CircleGeometry(0.06, 16);
+  const campoMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x00aa00,
+    side: THREE.DoubleSide
+  });
+  const campo = new THREE.Mesh(campoGeometry, campoMaterial);
+  campo.position.z = 0.001;
+  estadioGrupo.add(campo);
+  
+  estadioGrupo.position.set(x, y, 0.15);
+  estadioGrupo.name = `estadio_${equipo}`;
+  
+  scene.add(estadioGrupo);
+  estadios3D[equipo] = estadioGrupo;
+  
+  return estadioGrupo;
+}
+
+
+function crearTodosLosEstadios() {
+  for (const [equipo, coords] of Object.entries(datosEstadios)) {
+    crearEstadio3D(equipo, coords.lat, coords.lon);
+  }
+}
+
+function toggleEstadios(visible) {
+  for (const estadio of Object.values(estadios3D)) {
+    estadio.visible = visible;
+  }
 }
 
 function crearStatsCanvas() {
@@ -178,6 +265,7 @@ function cargarDatos() {
     .then(r => r.text())
     .then(text => {
       procesarCSVEstadios(text);
+      crearTodosLosEstadios();
       return fetch(partidos2425);
     })
     .then(r => r.text())
@@ -266,12 +354,24 @@ function createGui() {
   gui.add(controlSim, "pausa").name("Pausar/Reanudar").onChange(v => {
     pausa = v;
   });
+  gui.add(controlSim, "mostrarEstadios").name("Mostrar Estadios").onChange(v => {
+    toggleEstadios(v);
+  });
   gui.add(controlSim, "avanzar").name("Avanzar día");
   gui.add(controlSim, "reset").name("Reiniciar");
 }
 
 function animate() {
   requestAnimationFrame(animate);
+  
+  camcontrols.update();
+  
+  if (controlSim.mostrarEstadios) {
+    for (const estadio of Object.values(estadios3D)) {
+      estadio.rotation.z += 0.001;
+    }
+  }
+  
   if (!pausa) {
     actualizarSimulacion();
   }
@@ -321,7 +421,6 @@ function avanzarDia() {
   partidosLanzados.clear();
   actualizarSimulacion(true);
 }
-
 
 function actualizarSimulacion(forzado = false) {
   if (!fechaSimulacion || !fuenteGlobal) return;
@@ -433,7 +532,6 @@ function actualizarStatsTexto() {
   });
   actualizarStatsCanvas(ranking);
 }
-
 
 function crearTexto3D(texto, font, size, color) {
   const geometry = new TextGeometry(texto, { font, size, height: 0 });
