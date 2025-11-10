@@ -31,6 +31,7 @@ let partidosLanzados = new Set();
 
 let lineasPartidos = [];
 
+//Pequeño desplazamiento para los estadios que están muy cerca
 const desplazamientosEstadios = {
   "Sevilla": { lat: -0.05, lon: 0.05 },
   "Betis": { lat: 0.05, lon: -0.05 },
