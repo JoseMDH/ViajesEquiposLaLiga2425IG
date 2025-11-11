@@ -2,3 +2,5 @@
 Created with CodeSandbox
 
 Se cogieron los datos oficiales de LaLiga de los partidos que se disputaron en la pasada liga 24/25. Posteriormente se utilizaron los datos de las coordenadas de los estadios de los 20 equipos que estaban en primera división el año pasado y se calculó en mi mapa su localización y después también el cáculo en kilómetros la distancia de cada uno de sus viajes(sólo las jornadas que era visitante ya que las otras no tuvieron que hacer viaje al jugar en su propio estadio). Para moverse por el mapa se pueden utilizar las flechas para moverse y también se permite hacer zoom. Se puede pausar la simulación, avanzar día a día(no automático) o reiniciarla. También se pueden activar o desactivar los estadios dibujados con un cilindro y un anillo, con su color correspondiente. A la izquierda arriba, se encuentra la fecha que avanza según el modo y a izquierda centro se encuentra la tabla de clasificación de los kilómetros recorridos por cada equipo en total, actualizandose jornada a jornada.  
+
+De: José Manuel Díaz Hernández
